@@ -28,20 +28,34 @@ def get_posts():
     
     return jsonify([dict(post) for post in posts])
 
-@app.route ('/posts/<int:post_id>', methods=['GET'])
-def get_post(post_id):
+@app.route('/posts/<int:id>', methods=['GET'])
+def get_post(id):
     conn = get_db_connection()
-    post = conn.execute('SELECT * FROM posts WHERE id = ?', (post_id,)).fetchone()
-    
-    if post is None:
-        conn.close()
-        return jsonify({'error': 'Post not found'}), 404
-    
-    post = conn.execute ('SELECT * FROM posts WHERE id = ?', (post_id,)).fetchone()
-    conn.commit()
+
+    post = conn.execute('''
+        SELECT posts.id,posts.title,posts.content,posts.author_id,
+            authors.id AS author_id,authors.name AS author_name,authors.bio AS author_bio
+        FROM posts JOIN authors ON posts.author_id = authors.id WHERE posts.id = ?''', (id,)).fetchone()
+
     conn.close()
-    
-    return jsonify(dict(post)) 
+
+    if post is None:
+        return jsonify({'error': 'Пост не найден'}), 404
+
+    result = {
+        'id': post['id'],
+        'title': post['title'],
+        'content': post['content'],
+        'author_id': post['author_id'],
+        'author': {
+            'id': post['author_id'],
+            'name': post['author_name'],
+            'bio': post['author_bio']
+        }
+    }
+
+    return jsonify(result)
+
 
 @app.route('/posts', methods=['POST'])
 def create_post():
@@ -70,6 +84,8 @@ def create_post():
     
     post = cursor.execute('SELECT * FROM posts WHERE id = ?', (post_id,)).fetchone()
     return jsonify(dict(post)), 201
+
+
 @app.route ('/authors/<int:id>/posts', methods=['GET'])
 def get_author_posts(id):
     conn = get_db_connection()
@@ -85,15 +101,15 @@ def get_author_posts(id):
     return jsonify([dict(post) for post in posts])
 
 
-@app.route('/posts/<int:post_id>', methods=['DELETE'])
-def delete_post(post_id):
+@app.route('/posts/<int:id>', methods=['DELETE'])
+def delete_post(id):
     conn = get_db_connection ()
-    post = conn.execute('SELECT * FROM posts WHERE id = ?', (post_id)).fetchone
+    post = conn.execute('SELECT * FROM posts WHERE id = ?', (id,)).fetchone()
     if post == None :
         conn.close()
         return jsonify ({'error': 'такого поста нету' })
     
-    conn.execute('DELETE FROM posts WHERE id = ?', (post_id,))
+    conn.execute('DELETE FROM posts WHERE id = ?', (id,))
     conn.commit()
     conn.close()
 
